@@ -48,7 +48,11 @@ router.post('/search',
 
         let query = Anime.find()
         if (req.body.title != null && req.body.title !== '') {
-            query = query.regex('title', new RegExp(req.body.title, 'i'))
+            try {
+                query = query.regex('title', new RegExp(req.body.title, 'i'))
+            } catch (e) {
+                return res.status(400).json({ message: 'Invalid title format' })
+            }
         }
         if (req.body.releasedBefore != null && req.body.releasedBefore !== '') {
             query = query.lte('releaseDate', req.body.releasedBefore)
@@ -84,8 +88,8 @@ router.post('/create',
         body('releaseDate').optional().toDate(),
         body('source').optional().trim().escape(),
         body('externalLink').optional().trim().escape(),
-        body('genres').optional().toArray(),
-        body('themes').optional().toArray(),
+        body('genres').optional().trim().escape(),
+        body('themes').optional().trim().escape(),
         body('duration').optional().trim().escape(),
         body('rating').optional().isNumeric().toInt(),
         body('character').optional().toArray(),
@@ -104,18 +108,21 @@ router.post('/create',
         if (req.body.releaseDate) anime.releaseDate = req.body.releaseDate
         if (req.body.source) anime.source = req.body.source
         if (req.body.externalLink) anime.externalLink = req.body.externalLink
-        if (req.body.genres) anime.genres = req.body.genres
-        if (req.body.themes) anime.themes = req.body.themes
+        if (req.body.genres) anime.genres = req.body.genres.split(',').map(genre => genre.trim())
+        if (req.body.themes) anime.themes = req.body.themes.split(',').map(theme => theme.trim())
         if (req.body.duration) anime.duration = req.body.duration
         if (req.body.rating) anime.rating = req.body.rating
-        if (req.body.character) anime.character = req.body.character
+        if (req.body.character) anime.character = JSON.parse(req.body.character[0])
         try {
             if (req.file != null && req.file !== '') {
                 saveCover(anime, req.file)
             }
-            const newAnime = await anime.save()
+            let newAnime = await anime.save()
+            const { coverImage, coverImageType, ...animeWithoutCoverImage } = newAnime._doc
+            newAnime = { ...animeWithoutCoverImage, coverImagePath: newAnime.coverImagePath }
             res.json({ message: 'Anime created successfully', anime: newAnime })
         } catch (err) {
+            console.log(err.message)
             res.status(500).json({ message: 'Error creating new anime', error: err.message })
         }
     }
@@ -133,8 +140,8 @@ router.put('/:id',
         body('releaseDate').optional().toDate(),
         body('source').optional().trim().escape(),
         body('externalLink').optional().trim().escape(),
-        body('genres').optional().toArray(),
-        body('themes').optional().toArray(),
+        body('genres').optional().trim().escape(),
+        body('themes').optional().trim().escape(),
         body('duration').optional().trim().escape(),
         body('rating').optional().isNumeric().toInt(),
         body('character').optional().toArray(),
@@ -155,8 +162,8 @@ router.put('/:id',
             if (req.body.releaseDate) anime.releaseDate = req.body.releaseDate
             if (req.body.source) anime.source = req.body.source
             if (req.body.externalLink) anime.externalLink = req.body.externalLink
-            if (req.body.genres) anime.genres = req.body.genres
-            if (req.body.themes) anime.themes = req.body.themes
+            if (req.body.genres) anime.genres = req.body.genres.split(',').map(genre => genre.trim())
+            if (req.body.themes) anime.themes = req.body.themes.split(',').map(theme => theme.trim())
             if (req.body.duration) anime.duration = req.body.duration
             if (req.body.rating) anime.rating = req.body.rating
             if (req.body.character) anime.character = req.body.character
@@ -164,6 +171,8 @@ router.put('/:id',
                 saveCover(anime, req.file)
             }
             await anime.save()
+            const { coverImage, coverImageType, ...animeWithoutCoverImage } = anime._doc
+            anime = { ...animeWithoutCoverImage, coverImagePath: anime.coverImagePath }
             res.json({ message: 'Anime updated successfully', anime: anime })
         } catch (e) {
             if (anime != null) {
