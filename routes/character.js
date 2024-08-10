@@ -86,11 +86,13 @@ router.post('/create',
         if (req.body.name) character.name = req.body.name
         if (req.body.originalName) character.originalName = req.body.originalName
         if (req.body.description) character.description = req.body.description
-        if (req.body.anime) character.anime = req.body.anime
+        if (req.body.anime) character.anime = JSON.parse(req.body.anime[0])
         try {
             saveImage(character, req.file)
-            const newCharacter = await character.save()
-            res.json({ message: 'Character created successfully', character: newCharacter })
+            let newCharacter = await character.save()
+            const { image, imageType, ...characterWithoutImage } = newCharacter._doc
+            newCharacter = { ...characterWithoutImage, imagePath: newCharacter.imagePath }
+            res.status(200).json({ message: 'Character created successfully', character: newCharacter })
         } catch (err) {
             res.status(500).json({ message: 'Error creating Character', error: err.message })
         }
@@ -117,7 +119,7 @@ router.put('/:id',
             if (character.name) character.name = req.body.name
             if (character.originalName) character.originalName = req.body.originalName
             if (character.description) character.description = req.body.description
-            if (character.anime) character.anime = req.body.anime
+            if (character.anime) character.anime = req.body.anime // TODO - fix this
             if (req.file != null && req.file !== '') {
                 saveImage(character, req.file)
             }
