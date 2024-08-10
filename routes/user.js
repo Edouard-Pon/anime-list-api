@@ -30,10 +30,10 @@ router.post('/login',
                 return res.status(401).json({ message: 'Authentication failed.' })
             }
 
-            const token = jwt.sign({ role: user.role, username: user.username }, secretKey, {
+            const token = jwt.sign({ role: user.role, username: user.username, id: user._id }, secretKey, {
                 expiresIn: 10080
             })
-            res.status(200).json({ success: true, token: 'JWT ' + token })
+            res.status(200).json({ success: true, token: 'JWT ' + token, user: { username: user.username, role: user.role, _id: user._id } })
         })
     }
 )
@@ -42,6 +42,7 @@ router.post('/register',
     body('username').trim().escape(),
     body('password').trim().escape(),
     async (req, res) => {
+        if (process.env.REGISTRATION_DISABLED === 'true') return res.status(400).json({ message: 'Registration is disabled.' })
         const errors = validationResult(req)
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array() })
