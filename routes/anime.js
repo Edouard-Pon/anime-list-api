@@ -4,6 +4,7 @@ const Anime = require('../models/anime')
 const imageMimeTypes = ['image/jpeg', 'image/png', 'image/gif']
 const { authenticateToken, authenticateAdmin } = require('../middleware/auth')
 const { body, validationResult } = require('express-validator')
+const uploadImageToGoogleDrive = require('../utils/googleDrive')
 
 
 // Get all anime's /anime - no auth required TODO - Add pagination
@@ -11,10 +12,6 @@ router.get('/', async (req, res) => {
     let query = Anime.find()
     try {
         let anime = await query.sort({ createdAt: 'desc' }).exec()
-        anime = anime.map(anime => {
-            const { coverImage, coverImageType, ...animeWithoutCoverImage } = anime._doc
-            return { ...animeWithoutCoverImage, coverImagePath: anime.coverImagePath }
-        })
         res.json({
             anime: anime,
         })
@@ -27,8 +24,6 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         let anime = await Anime.findById(req.params.id).exec()
-        const { coverImage, coverImageType, ...animeWithoutCoverImage } = anime._doc
-        anime = { ...animeWithoutCoverImage, coverImagePath: anime.coverImagePath }
         res.json(anime)
     } catch {
         res.status(500).json({ message: 'An error occurred while retrieving the data.' })
@@ -62,10 +57,6 @@ router.post('/search',
         }
         try {
             let anime = await query.sort({ createdAt: 'desc' }).exec()
-            anime = anime.map(anime => {
-                const { coverImage, coverImageType, ...animeWithoutCoverImage } = anime._doc
-                return { ...animeWithoutCoverImage, coverImagePath: anime.coverImagePath }
-            })
             res.json({
                 anime: anime,
                 searchOptions: req.body
@@ -114,15 +105,12 @@ router.post('/create',
         if (req.body.rating) anime.rating = req.body.rating
         if (req.body.character) anime.character = JSON.parse(req.body.character[0])
         try {
-            if (req.file != null && req.file !== '') {
-                saveCover(anime, req.file)
+            if (req.file) {
+                anime.coverImageUrl = await uploadImageToGoogleDrive(req.file, 'anime', anime._id)
             }
             let newAnime = await anime.save()
-            const { coverImage, coverImageType, ...animeWithoutCoverImage } = newAnime._doc
-            newAnime = { ...animeWithoutCoverImage, coverImagePath: newAnime.coverImagePath }
             res.json({ message: 'Anime created successfully', anime: newAnime })
         } catch (err) {
-            console.log(err.message)
             res.status(500).json({ message: 'Error creating new anime', error: err.message })
         }
     }
@@ -167,12 +155,12 @@ router.put('/:id',
             if (req.body.duration) anime.duration = req.body.duration
             if (req.body.rating) anime.rating = req.body.rating
             if (req.body.character) anime.character = req.body.character
-            if (req.file != null && req.file !== '') {
-                saveCover(anime, req.file)
+
+            if (req.file) {
+                anime.coverImageUrl = await uploadImageToGoogleDrive(req.file, 'anime', anime._id)
             }
+
             await anime.save()
-            const { coverImage, coverImageType, ...animeWithoutCoverImage } = anime._doc
-            anime = { ...animeWithoutCoverImage, coverImagePath: anime.coverImagePath }
             res.json({ message: 'Anime updated successfully', anime: anime })
         } catch (e) {
             if (anime != null) {
@@ -198,13 +186,5 @@ router.delete('/:id', authenticateAdmin, async (req, res) => {
         res.status(500).json({ message: 'Error deleting anime', error: err.message })
     }
 })
-
-function saveCover(anime, coverEncoded) {
-    if (coverEncoded == null) return
-    if (imageMimeTypes.includes(coverEncoded.mimetype)) {
-        anime.coverImage = coverEncoded.buffer
-        anime.coverImageType = coverEncoded.mimetype
-    }
-}
 
 module.exports = router

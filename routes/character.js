@@ -5,16 +5,13 @@ const Anime = require('../models/anime')
 const imageMimeTypes = ['image/jpeg', 'image/png', 'image/gif']
 const { body, validationResult } = require('express-validator')
 const { authenticateAdmin } = require('../middleware/auth')
+const uploadImageToGoogleDrive = require('../utils/googleDrive')
 
 
 // Get all characters /characters TODO - Add pagination
 router.get('/', async (req, res) => {
     try {
         let character =  await Character.find()
-        character = character.map(character => {
-            const { image, imageType, ...characterWithoutImage } = character._doc
-            return { ...characterWithoutImage, imagePath: character.imagePath }
-        })
         res.json({
             character: character,
         })
@@ -28,12 +25,6 @@ router.get('/:id', async (req, res) => {
     try {
         let character = await Character.findById(req.params.id)
         let anime = await  Anime.find({ _id: character.anime }).exec()
-        const { image, imageType, ...characterWithoutImage } = character._doc
-        character = { ...characterWithoutImage, imagePath: character.imagePath }
-        anime = anime.map(anime => {
-            const { coverImage, coverImageType, ...animeWithoutCoverImage } = anime._doc
-            return { ...animeWithoutCoverImage, coverImagePath: anime.coverImagePath }
-        })
         res.json({
             character: character,
             anime: anime
@@ -58,10 +49,6 @@ router.post('/search',
         }
         try {
             let character =  await Character.find(searchOptions)
-            character = character.map(character => {
-                const { image, imageType, ...characterWithoutImage } = character._doc
-                return { ...characterWithoutImage, imagePath: character.imagePath }
-            })
             res.json({
                 character: character,
                 searchOptions: req.body
@@ -88,10 +75,10 @@ router.post('/create',
         if (req.body.description) character.description = req.body.description
         if (req.body.anime) character.anime = JSON.parse(req.body.anime[0])
         try {
-            saveImage(character, req.file)
+            if (req.file) {
+                character.coverImageUrl = await uploadImageToGoogleDrive(req.file, 'characters', character._id)
+            }
             let newCharacter = await character.save()
-            const { image, imageType, ...characterWithoutImage } = newCharacter._doc
-            newCharacter = { ...characterWithoutImage, imagePath: newCharacter.imagePath }
             res.status(200).json({ message: 'Character created successfully', character: newCharacter })
         } catch (err) {
             res.status(500).json({ message: 'Error creating Character', error: err.message })
@@ -120,8 +107,8 @@ router.put('/:id',
             if (character.originalName) character.originalName = req.body.originalName
             if (character.description) character.description = req.body.description
             if (character.anime) character.anime = req.body.anime // TODO - fix this
-            if (req.file != null && req.file !== '') {
-                saveImage(character, req.file)
+            if (req.file) {
+                character.coverImageUrl = await uploadImageToGoogleDrive(req.file, 'characters', character._id)
             }
             await character.save()
             res.json({ message: 'Character updated successfully', character: character })
@@ -148,13 +135,5 @@ router.delete('/:id', authenticateAdmin, async (req, res) => {
         res.status(500).json({ message: 'Error deleting Character', error: err.message })
     }
 })
-
-function saveImage(character, imageEncoded) {
-    if (imageEncoded == null) return
-    if (imageMimeTypes.includes(imageEncoded.mimetype)) {
-        character.image = imageEncoded.buffer
-        character.imageType = imageEncoded.mimetype
-    }
-}
 
 module.exports = router
