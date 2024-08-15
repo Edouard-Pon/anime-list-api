@@ -52,6 +52,37 @@ async function uploadImageToGoogleDrive(file, type, id) {
     }
 }
 
+async function deleteImageFromGoogleDrive(imageUrl, parentFolderName) {
+    const fileId = imageUrl.split('/').pop()
+
+    try {
+        const parentFolderId = await getFolderIdByName(parentFolderName)
+
+        await drive.files.delete({
+            fileId: fileId,
+        })
+
+        await drive.files.delete({
+            fileId: parentFolderId,
+        })
+    } catch (error) {
+        throw new Error('Failed to delete image or parent folder from Google Drive')
+    }
+}
+
+async function getFolderIdByName(folderName) {
+    const response = await drive.files.list({
+        q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+        fields: 'files(id, name)',
+    })
+
+    if (response.data.files.length) {
+        return response.data.files[0].id
+    } else {
+        throw new Error('Folder not found')
+    }
+}
+
 async function getOrCreateFolder(parentFolderId, folderName, drive) {
     const response = await drive.files.list({
         q: `'${parentFolderId}' in parents and name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
@@ -74,4 +105,7 @@ async function getOrCreateFolder(parentFolderId, folderName, drive) {
     return folder.data.id
 }
 
-module.exports = uploadImageToGoogleDrive
+module.exports = {
+    uploadImageToGoogleDrive,
+    deleteImageFromGoogleDrive,
+}
