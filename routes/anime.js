@@ -1,10 +1,10 @@
 const express = require('express')
 const router = express.Router()
 const Anime = require('../models/anime')
-const imageMimeTypes = ['image/jpeg', 'image/png', 'image/gif']
+const Character = require('../models/character')
 const { authenticateToken, authenticateAdmin } = require('../middleware/auth')
 const { body, validationResult } = require('express-validator')
-const uploadImageToGoogleDrive = require('../utils/googleDrive')
+const { uploadImageToGoogleDrive, deleteImageFromGoogleDrive } = require('../utils/googleDrive')
 
 
 // Get all anime's /anime - no auth required TODO - Add pagination
@@ -106,6 +106,7 @@ router.post('/create',
         if (req.body.character) anime.character = JSON.parse(req.body.character[0])
         try {
             if (req.file) {
+                req.file.originalname = 'cover'
                 anime.coverImageUrl = await uploadImageToGoogleDrive(req.file, 'anime', anime._id)
             }
             let newAnime = await anime.save()
@@ -157,6 +158,7 @@ router.put('/:id',
             if (req.body.character) anime.character = req.body.character
 
             if (req.file) {
+                req.file.originalname = 'cover'
                 anime.coverImageUrl = await uploadImageToGoogleDrive(req.file, 'anime', anime._id)
             }
 
@@ -180,7 +182,17 @@ router.delete('/:id', authenticateAdmin, async (req, res) => {
         if (anime == null) {
             return res.status(404).json({ message: 'Anime not found' })
         }
+
+        const characters = await Character.find({ anime: anime._id })
+        if (characters.length > 0) {
+            return res.status(400).json({ message: 'This anime is pinned to characters' })
+        }
+
+        const parentFolderName = anime._id.toString()
+        await deleteImageFromGoogleDrive(anime.coverImageUrl, parentFolderName)
+
         await Anime.deleteOne({ _id: req.params.id })
+
         res.json({ message: 'Anime successfully deleted' })
     } catch (err) {
         res.status(500).json({ message: 'Error deleting anime', error: err.message })

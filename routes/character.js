@@ -2,10 +2,9 @@ const express = require('express')
 const router = express.Router()
 const Character = require('../models/character')
 const Anime = require('../models/anime')
-const imageMimeTypes = ['image/jpeg', 'image/png', 'image/gif']
 const { body, validationResult } = require('express-validator')
 const { authenticateAdmin } = require('../middleware/auth')
-const uploadImageToGoogleDrive = require('../utils/googleDrive')
+const { uploadImageToGoogleDrive, deleteImageFromGoogleDrive } = require('../utils/googleDrive')
 
 
 // Get all characters /characters TODO - Add pagination
@@ -73,9 +72,10 @@ router.post('/create',
         if (req.body.name) character.name = req.body.name
         if (req.body.originalName) character.originalName = req.body.originalName
         if (req.body.description) character.description = req.body.description
-        if (req.body.anime) character.anime = JSON.parse(req.body.anime[0])
+        // if (req.body.anime) character.anime = JSON.parse(req.body.anime[0])
         try {
             if (req.file) {
+                req.file.originalname = 'cover'
                 character.coverImageUrl = await uploadImageToGoogleDrive(req.file, 'characters', character._id)
             }
             let newCharacter = await character.save()
@@ -108,6 +108,7 @@ router.put('/:id',
             if (character.description) character.description = req.body.description
             if (character.anime) character.anime = req.body.anime // TODO - fix this
             if (req.file) {
+                req.file.originalname = 'cover'
                 character.coverImageUrl = await uploadImageToGoogleDrive(req.file, 'characters', character._id)
             }
             await character.save()
@@ -129,7 +130,12 @@ router.delete('/:id', authenticateAdmin, async (req, res) => {
         if (character == null) {
             return res.status(404).json({ message: 'Character not found' })
         }
+
+        const parentFolderName = character._id.toString()
+        await deleteImageFromGoogleDrive(character.coverImageUrl, parentFolderName)
+
         await Character.deleteOne({ _id: req.params.id })
+
         res.json({ message: 'Character deleted successfully' })
     } catch (err) {
         res.status(500).json({ message: 'Error deleting Character', error: err.message })

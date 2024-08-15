@@ -1,5 +1,4 @@
 const mongoose = require('mongoose')
-const Character = require('./character')
 
 const animeSchema = new mongoose.Schema({
     title: {
@@ -57,18 +56,6 @@ const animeSchema = new mongoose.Schema({
         type: [mongoose.Schema.Types.ObjectId],
         ref: 'Character'
     }
-})
-
-animeSchema.pre('remove', function (next) {
-    Character.find({ anime: this.id }, (err, characters) => {
-        if (err) {
-            next(err)
-        } else if (characters.length > 0) {
-            next(new Error('This anime is pinned to characters'))
-        } else {
-            next()
-        }
-    })
 })
 
 module.exports = mongoose.model('Anime', animeSchema)
