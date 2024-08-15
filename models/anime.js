@@ -36,11 +36,7 @@ const animeSchema = new mongoose.Schema({
     externalLink: {
         type: String
     },
-    coverImage: {
-        type: Buffer,
-        required: true
-    },
-    coverImageType: {
+    coverImageUrl: {
         type: String,
         required: true
     },
@@ -73,12 +69,6 @@ animeSchema.pre('remove', function (next) {
             next()
         }
     })
-})
-
-animeSchema.virtual('coverImagePath').get(function () {
-    if (this.coverImage != null && this.coverImageType != null) {
-        return `data:${this.coverImageType};charset=utf-8;base64,${this.coverImage.toString('base64')}`
-    }
 })
 
 module.exports = mongoose.model('Anime', animeSchema)

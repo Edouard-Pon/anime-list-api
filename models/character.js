@@ -1,5 +1,4 @@
 const mongoose = require('mongoose')
-const Anime = require('./anime')
 
 const characterSchema = new mongoose.Schema({
     name: {
@@ -12,11 +11,7 @@ const characterSchema = new mongoose.Schema({
     description: {
         type: String
     },
-    image: {
-        type: Buffer,
-        required: true
-    },
-    imageType: {
+    coverImageUrl: {
         type: String,
         required: true
     },
@@ -28,12 +23,6 @@ const characterSchema = new mongoose.Schema({
         type: Date,
         required: true,
         default: Date.now
-    }
-})
-
-characterSchema.virtual('imagePath').get(function () {
-    if (this.image != null && this.imageType != null) {
-        return `data:${this.imageType};charset=utf-8;base64,${this.image.toString('base64')}`
     }
 })
 
