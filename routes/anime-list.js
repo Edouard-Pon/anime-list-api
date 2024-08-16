@@ -11,7 +11,12 @@ router.get('/:userId', authenticateToken, async (req, res) => {
             return res.status(403).json({ message: 'Unauthorized action' });
         }
 
-        let animeList = await AnimeList.findOne({ userId: req.params.userId });
+        let animeList = await AnimeList.findOne({ userId: req.params.userId })
+            .populate('favorites.animeId')
+            .populate('toWatch.animeId')
+            .populate('watched.animeId')
+            .populate('abandoned.animeId');
+
         if (!animeList) {
             animeList = new AnimeList({ userId: req.params.userId });
             await animeList.save();
@@ -48,6 +53,12 @@ router.post('/:userId/favorites', authenticateToken, async (req, res) => {
         animeList.favorites.push({ animeId: req.body.animeId });
         await animeList.save();
 
+        animeList = await AnimeList.findById(animeList._id)
+            .populate('favorites.animeId')
+            .populate('toWatch.animeId')
+            .populate('watched.animeId')
+            .populate('abandoned.animeId');
+
         res.json({ message: 'Anime added to favorites successfully', animeList: animeList });
     } catch (e) {
         console.log(e.message);
@@ -62,13 +73,19 @@ router.delete('/:userId/favorites/:animeId', authenticateToken, async (req, res)
             return res.status(403).json({ message: 'Unauthorized action' });
         }
 
-        const animeList = await AnimeList.findOne({ userId: req.params.userId });
+        let animeList = await AnimeList.findOne({ userId: req.params.userId });
         if (!animeList) {
             return res.status(404).json({ message: 'Anime list not found for the user' });
         }
 
         animeList.favorites = animeList.favorites.filter(item => item.animeId.toString() !== req.params.animeId);
         await animeList.save();
+
+        animeList = await AnimeList.findById(animeList._id)
+            .populate('favorites.animeId')
+            .populate('toWatch.animeId')
+            .populate('watched.animeId')
+            .populate('abandoned.animeId');
 
         res.json({ message: 'Anime removed from favorites successfully', animeList: animeList });
     } catch (e) {
@@ -95,11 +112,17 @@ router.post('/:userId/toWatch', authenticateToken, async (req, res) => {
         }
 
         if (animeList.toWatch.some(item => item.animeId.toString() === req.body.animeId)) {
-            return res.status(400).json({ message: 'Anime is already in the favorites list' });
+            return res.status(400).json({ message: 'Anime is already in the to watch list' });
         }
 
         animeList.toWatch.push({ animeId: req.body.animeId });
         await animeList.save();
+
+        animeList = await AnimeList.findById(animeList._id)
+            .populate('favorites.animeId')
+            .populate('toWatch.animeId')
+            .populate('watched.animeId')
+            .populate('abandoned.animeId');
 
         res.json({ message: 'Anime added to toWatch successfully', animeList: animeList });
     } catch (e) {
@@ -114,13 +137,19 @@ router.delete('/:userId/toWatch/:animeId', authenticateToken, async (req, res) =
             return res.status(403).json({ message: 'Unauthorized action' });
         }
 
-        const animeList = await AnimeList.findOne({ userId: req.params.userId });
+        let animeList = await AnimeList.findOne({ userId: req.params.userId });
         if (!animeList) {
             return res.status(404).json({ message: 'Anime list not found for the user' });
         }
 
         animeList.toWatch = animeList.toWatch.filter(item => item.animeId.toString() !== req.params.animeId);
         await animeList.save();
+
+        animeList = await AnimeList.findById(animeList._id)
+            .populate('favorites.animeId')
+            .populate('toWatch.animeId')
+            .populate('watched.animeId')
+            .populate('abandoned.animeId');
 
         res.json({ message: 'Anime removed from toWatch successfully', animeList: animeList });
     } catch (e) {
@@ -147,11 +176,17 @@ router.post('/:userId/watched', authenticateToken, async (req, res) => {
         }
 
         if (animeList.watched.some(item => item.animeId.toString() === req.body.animeId)) {
-            return res.status(400).json({ message: 'Anime is already in the favorites list' });
+            return res.status(400).json({ message: 'Anime is already in the watched list' });
         }
 
         animeList.watched.push({ animeId: req.body.animeId });
         await animeList.save();
+
+        animeList = await AnimeList.findById(animeList._id)
+            .populate('favorites.animeId')
+            .populate('toWatch.animeId')
+            .populate('watched.animeId')
+            .populate('abandoned.animeId');
 
         res.json({ message: 'Anime added to watched successfully', animeList: animeList });
     } catch (e) {
@@ -166,13 +201,19 @@ router.delete('/:userId/watched/:animeId', authenticateToken, async (req, res) =
             return res.status(403).json({ message: 'Unauthorized action' });
         }
 
-        const animeList = await AnimeList.findOne({ userId: req.params.userId });
+        let animeList = await AnimeList.findOne({ userId: req.params.userId });
         if (!animeList) {
             return res.status(404).json({ message: 'Anime list not found for the user' });
         }
 
         animeList.watched = animeList.watched.filter(item => item.animeId.toString() !== req.params.animeId);
         await animeList.save();
+
+        animeList = await AnimeList.findById(animeList._id)
+            .populate('favorites.animeId')
+            .populate('toWatch.animeId')
+            .populate('watched.animeId')
+            .populate('abandoned.animeId');
 
         res.json({ message: 'Anime removed from watched successfully', animeList: animeList });
     } catch (e) {
@@ -199,11 +240,17 @@ router.post('/:userId/abandoned', authenticateToken, async (req, res) => {
         }
 
         if (animeList.abandoned.some(item => item.animeId.toString() === req.body.animeId)) {
-            return res.status(400).json({ message: 'Anime is already in the favorites list' });
+            return res.status(400).json({ message: 'Anime is already in the abandoned list' });
         }
 
         animeList.abandoned.push({ animeId: req.body.animeId });
         await animeList.save();
+
+        animeList = await AnimeList.findById(animeList._id)
+            .populate('favorites.animeId')
+            .populate('toWatch.animeId')
+            .populate('watched.animeId')
+            .populate('abandoned.animeId');
 
         res.json({ message: 'Anime added to abandoned successfully', animeList: animeList });
     } catch (e) {
@@ -218,13 +265,19 @@ router.delete('/:userId/abandoned/:animeId', authenticateToken, async (req, res)
             return res.status(403).json({ message: 'Unauthorized action' });
         }
 
-        const animeList = await AnimeList.findOne({ userId: req.params.userId });
+        let animeList = await AnimeList.findOne({ userId: req.params.userId });
         if (!animeList) {
             return res.status(404).json({ message: 'Anime list not found for the user' });
         }
 
         animeList.abandoned = animeList.abandoned.filter(item => item.animeId.toString() !== req.params.animeId);
         await animeList.save();
+
+        animeList = await AnimeList.findById(animeList._id)
+            .populate('favorites.animeId')
+            .populate('toWatch.animeId')
+            .populate('watched.animeId')
+            .populate('abandoned.animeId');
 
         res.json({ message: 'Anime removed from abandoned successfully', animeList: animeList });
     } catch (e) {
