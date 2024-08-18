@@ -5,6 +5,8 @@ const Character = require('../models/character')
 const { authenticateToken, authenticateAdmin } = require('../middleware/auth')
 const { body, validationResult } = require('express-validator')
 const { uploadImageToGoogleDrive, deleteImageFromGoogleDrive } = require('../utils/googleDrive')
+const { validateArray } = require('../utils/validators')
+const { sanitizeString } = require('../utils/sanitizers')
 
 
 // Get all anime's /anime - no auth required TODO - Add pagination
@@ -23,7 +25,10 @@ router.get('/', async (req, res) => {
 // Get Anime by ID /anime/:id - no auth required
 router.get('/:id', async (req, res) => {
     try {
-        let anime = await Anime.findById(req.params.id).exec()
+        let anime = await Anime.findById(req.params.id)
+            .populate('characters')
+            .exec()
+
         res.json(anime)
     } catch {
         res.status(500).json({ message: 'An error occurred while retrieving the data.' })
@@ -79,11 +84,11 @@ router.post('/create',
         body('releaseDate').optional().toDate(),
         body('source').optional().trim().escape(),
         body('externalLink').optional().trim().escape(),
-        body('genres').optional().trim().escape(),
-        body('themes').optional().trim().escape(),
+        body('genres').optional().custom(value => validateArray(value, 'string')),
+        body('themes').optional().custom(value => validateArray(value, 'string')),
         body('duration').optional().trim().escape(),
         body('rating').optional().isNumeric().toInt(),
-        body('character').optional().toArray(),
+        body('characters').optional().custom(value => validateArray(value, 'objectId')),
     ],
     async (req, res) => {
         const errors = validationResult(req)
@@ -99,11 +104,11 @@ router.post('/create',
         if (req.body.releaseDate) anime.releaseDate = req.body.releaseDate
         if (req.body.source) anime.source = req.body.source
         if (req.body.externalLink) anime.externalLink = req.body.externalLink
-        if (req.body.genres) anime.genres = req.body.genres.split(',').map(genre => genre.trim())
-        if (req.body.themes) anime.themes = req.body.themes.split(',').map(theme => theme.trim())
+        if (req.body.genres) anime.genres = JSON.parse(req.body.genres).map(item => sanitizeString(item.trim()))
+        if (req.body.themes) anime.themes = JSON.parse(req.body.themes).map(item => sanitizeString(item.trim()))
         if (req.body.duration) anime.duration = req.body.duration
         if (req.body.rating) anime.rating = req.body.rating
-        if (req.body.character) anime.character = JSON.parse(req.body.character[0])
+        if (req.body.characters) anime.characters = JSON.parse(req.body.characters)
         try {
             if (req.file) {
                 req.file.originalname = 'cover'
@@ -129,20 +134,24 @@ router.put('/:id',
         body('releaseDate').optional().toDate(),
         body('source').optional().trim().escape(),
         body('externalLink').optional().trim().escape(),
-        body('genres').optional().trim().escape(),
-        body('themes').optional().trim().escape(),
+        body('genres').optional().custom(value => validateArray(value, 'string')),
+        body('themes').optional().custom(value => validateArray(value, 'string')),
         body('duration').optional().trim().escape(),
         body('rating').optional().isNumeric().toInt(),
-        body('character').optional().toArray(),
+        body('characters').optional().custom(value => validateArray(value, 'objectId')),
     ],
     async (req, res) => {
         const errors = validationResult(req)
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array() })
         }
-        let anime
         try {
-            anime = await Anime.findById(req.params.id)
+            let anime = await Anime.findById(req.params.id)
+
+            if (!anime) {
+                return res.status(404).json({ message: 'Anime not found' })
+            }
+
             if (req.body.title) anime.title = req.body.title
             if (req.body.type) anime.type = req.body.type
             if (req.body.episodes) anime.episodes = req.body.episodes
@@ -151,11 +160,11 @@ router.put('/:id',
             if (req.body.releaseDate) anime.releaseDate = req.body.releaseDate
             if (req.body.source) anime.source = req.body.source
             if (req.body.externalLink) anime.externalLink = req.body.externalLink
-            if (req.body.genres) anime.genres = req.body.genres.split(',').map(genre => genre.trim())
-            if (req.body.themes) anime.themes = req.body.themes.split(',').map(theme => theme.trim())
+            if (req.body.genres) anime.genres = JSON.parse(req.body.genres).map(item => sanitizeString(item.trim()))
+            if (req.body.themes) anime.themes = JSON.parse(req.body.themes).map(item => sanitizeString(item.trim()))
             if (req.body.duration) anime.duration = req.body.duration
             if (req.body.rating) anime.rating = req.body.rating
-            if (req.body.character) anime.character = req.body.character
+            if (req.body.characters) anime.characters = JSON.parse(req.body.characters)
 
             if (req.file) {
                 req.file.originalname = 'cover'
@@ -165,12 +174,7 @@ router.put('/:id',
             await anime.save()
             res.json({ message: 'Anime updated successfully', anime: anime })
         } catch (e) {
-            if (anime != null) {
-                console.log(e.message)
-                res.status(400).json({ message: 'Error updating Anime' })
-            } else {
-                res.status(404).json({ message: 'Anime not found' })
-            }
+            res.status(400).json({ message: 'Error updating Anime' })
         }
     }
 )
