@@ -52,7 +52,7 @@ const animeSchema = new mongoose.Schema({
     rating: {
         type: Number,
     },
-    character: {
+    characters: {
         type: [mongoose.Schema.Types.ObjectId],
         ref: 'Character'
     }
