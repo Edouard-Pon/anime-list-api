@@ -5,6 +5,7 @@ const Anime = require('../models/anime')
 const { body, validationResult } = require('express-validator')
 const { authenticateAdmin } = require('../middleware/auth')
 const { uploadImageToGoogleDrive, deleteImageFromGoogleDrive } = require('../utils/googleDrive')
+const {validateArray} = require("../utils/validators");
 
 
 // Get all characters /characters TODO - Add pagination
@@ -23,10 +24,11 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         let character = await Character.findById(req.params.id)
-        let anime = await  Anime.find({ _id: character.anime }).exec()
+            .populate('anime')
+            .exec()
+
         res.json({
             character: character,
-            anime: anime
         })
     } catch {
         res.status(500).json({ message: 'An error occurred while retrieving the data.' })
@@ -65,14 +67,14 @@ router.post('/create',
         body('name').optional().trim().escape(),
         body('originalName').optional().trim().escape(),
         body('description').optional().trim().escape(),
-        body('anime').optional().toArray(),
+        body('anime').optional().custom(value => validateArray(value, 'objectId')),
     ],
     async (req, res) => {
         const character = new Character()
         if (req.body.name) character.name = req.body.name
         if (req.body.originalName) character.originalName = req.body.originalName
         if (req.body.description) character.description = req.body.description
-        // if (req.body.anime) character.anime = JSON.parse(req.body.anime[0])
+        if (character.anime) character.anime = JSON.parse(req.body.anime)
         try {
             if (req.file) {
                 req.file.originalname = 'cover'
@@ -93,7 +95,7 @@ router.put('/:id',
         body('name').trim().escape(),
         body('originalName').trim().escape(),
         body('description').trim().escape(),
-        body('anime').optional().toArray(),
+        body('anime').optional().custom(value => validateArray(value, 'objectId')),
     ],
     async (req, res) => {
         const errors = validationResult(req)
@@ -106,12 +108,17 @@ router.put('/:id',
             if (character.name) character.name = req.body.name
             if (character.originalName) character.originalName = req.body.originalName
             if (character.description) character.description = req.body.description
-            if (character.anime) character.anime = req.body.anime // TODO - fix this
+            if (character.anime) character.anime = JSON.parse(req.body.anime)
             if (req.file) {
                 req.file.originalname = 'cover'
                 character.coverImageUrl = await uploadImageToGoogleDrive(req.file, 'characters', character._id)
             }
             await character.save()
+
+            character = await Character.findById(req.params.id)
+                .populate('anime')
+                .exec()
+
             res.json({ message: 'Character updated successfully', character: character })
         } catch {
             if (character == null) {
