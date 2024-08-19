@@ -172,6 +172,11 @@ router.put('/:id',
             }
 
             await anime.save()
+
+            anime = await Anime.findById(req.params.id)
+                .populate('characters')
+                .exec()
+
             res.json({ message: 'Anime updated successfully', anime: anime })
         } catch (e) {
             res.status(400).json({ message: 'Error updating Anime' })
