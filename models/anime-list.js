@@ -20,6 +20,7 @@ const animeListSchema = new mongoose.Schema({
         required: true
     },
     favorites: [animeListItemSchema],
+    watching: [animeListItemSchema],
     toWatch: [animeListItemSchema],
     watched: [animeListItemSchema],
     abandoned: [animeListItemSchema]

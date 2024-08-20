@@ -13,6 +13,7 @@ router.get('/:userId', authenticateToken, async (req, res) => {
 
         let animeList = await AnimeList.findOne({ userId: req.params.userId })
             .populate('favorites.animeId')
+            .populate('watching.animeId')
             .populate('toWatch.animeId')
             .populate('watched.animeId')
             .populate('abandoned.animeId');
@@ -55,6 +56,7 @@ router.post('/:userId/favorites', authenticateToken, async (req, res) => {
 
         animeList = await AnimeList.findById(animeList._id)
             .populate('favorites.animeId')
+            .populate('watching.animeId')
             .populate('toWatch.animeId')
             .populate('watched.animeId')
             .populate('abandoned.animeId');
@@ -83,6 +85,7 @@ router.delete('/:userId/favorites/:animeId', authenticateToken, async (req, res)
 
         animeList = await AnimeList.findById(animeList._id)
             .populate('favorites.animeId')
+            .populate('watching.animeId')
             .populate('toWatch.animeId')
             .populate('watched.animeId')
             .populate('abandoned.animeId');
@@ -120,6 +123,7 @@ router.post('/:userId/toWatch', authenticateToken, async (req, res) => {
 
         animeList = await AnimeList.findById(animeList._id)
             .populate('favorites.animeId')
+            .populate('watching.animeId')
             .populate('toWatch.animeId')
             .populate('watched.animeId')
             .populate('abandoned.animeId');
@@ -147,6 +151,7 @@ router.delete('/:userId/toWatch/:animeId', authenticateToken, async (req, res) =
 
         animeList = await AnimeList.findById(animeList._id)
             .populate('favorites.animeId')
+            .populate('watching.animeId')
             .populate('toWatch.animeId')
             .populate('watched.animeId')
             .populate('abandoned.animeId');
@@ -184,6 +189,7 @@ router.post('/:userId/watched', authenticateToken, async (req, res) => {
 
         animeList = await AnimeList.findById(animeList._id)
             .populate('favorites.animeId')
+            .populate('watching.animeId')
             .populate('toWatch.animeId')
             .populate('watched.animeId')
             .populate('abandoned.animeId');
@@ -211,6 +217,7 @@ router.delete('/:userId/watched/:animeId', authenticateToken, async (req, res) =
 
         animeList = await AnimeList.findById(animeList._id)
             .populate('favorites.animeId')
+            .populate('watching.animeId')
             .populate('toWatch.animeId')
             .populate('watched.animeId')
             .populate('abandoned.animeId');
@@ -248,6 +255,7 @@ router.post('/:userId/abandoned', authenticateToken, async (req, res) => {
 
         animeList = await AnimeList.findById(animeList._id)
             .populate('favorites.animeId')
+            .populate('watching.animeId')
             .populate('toWatch.animeId')
             .populate('watched.animeId')
             .populate('abandoned.animeId');
@@ -275,6 +283,7 @@ router.delete('/:userId/abandoned/:animeId', authenticateToken, async (req, res)
 
         animeList = await AnimeList.findById(animeList._id)
             .populate('favorites.animeId')
+            .populate('watching.animeId')
             .populate('toWatch.animeId')
             .populate('watched.animeId')
             .populate('abandoned.animeId');
@@ -282,6 +291,72 @@ router.delete('/:userId/abandoned/:animeId', authenticateToken, async (req, res)
         res.json({ message: 'Anime removed from abandoned successfully', animeList: animeList });
     } catch (e) {
         res.status(500).json({ message: 'Error removing anime from abandoned', error: e.message });
+    }
+});
+
+// Add an anime to the abandoned list of a user
+router.post('/:userId/watching', authenticateToken, async (req, res) => {
+    try {
+        if (req.params.userId !== req.user.id) {
+            return res.status(403).json({ message: 'Unauthorized action' });
+        }
+
+        const anime = await Anime.findById(req.body.animeId);
+        if (!anime) {
+            return res.status(404).json({ message: 'Anime not found' });
+        }
+
+        let animeList = await AnimeList.findOne({ userId: req.params.userId });
+        if (!animeList) {
+            animeList = new AnimeList({ userId: req.params.userId });
+            await animeList.save();
+        }
+
+        if (animeList.watching.some(item => item.animeId.toString() === req.body.animeId)) {
+            return res.status(400).json({ message: 'Anime is already in the watching list' });
+        }
+
+        animeList.watching.push({ animeId: req.body.animeId });
+        await animeList.save();
+
+        animeList = await AnimeList.findById(animeList._id)
+            .populate('favorites.animeId')
+            .populate('watching.animeId')
+            .populate('toWatch.animeId')
+            .populate('watched.animeId')
+            .populate('abandoned.animeId');
+
+        res.json({ message: 'Anime added to watching successfully', animeList: animeList });
+    } catch (e) {
+        res.status(500).json({ message: 'Error adding anime to watching', error: e.message });
+    }
+});
+
+// Remove an anime from the abandoned list of a user
+router.delete('/:userId/watching/:animeId', authenticateToken, async (req, res) => {
+    try {
+        if (req.params.userId !== req.user.id) {
+            return res.status(403).json({ message: 'Unauthorized action' });
+        }
+
+        let animeList = await AnimeList.findOne({ userId: req.params.userId });
+        if (!animeList) {
+            return res.status(404).json({ message: 'Anime list not found for the user' });
+        }
+
+        animeList.watching = animeList.watching.filter(item => item.animeId.toString() !== req.params.animeId);
+        await animeList.save();
+
+        animeList = await AnimeList.findById(animeList._id)
+            .populate('favorites.animeId')
+            .populate('watching.animeId')
+            .populate('toWatch.animeId')
+            .populate('watched.animeId')
+            .populate('abandoned.animeId');
+
+        res.json({ message: 'Anime removed from watching successfully', animeList: animeList });
+    } catch (e) {
+        res.status(500).json({ message: 'Error removing anime from watching', error: e.message });
     }
 });
 
