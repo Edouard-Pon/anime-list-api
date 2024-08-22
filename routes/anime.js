@@ -13,7 +13,7 @@ const { sanitizeString } = require('../utils/sanitizers')
 router.get('/', async (req, res) => {
     let query = Anime.find()
     try {
-        let anime = await query.sort({ createdAt: 'desc' }).exec()
+        let anime = await query.sort({ uploadDate: 'desc' }).exec()
         res.json({
             anime: anime,
         })
@@ -61,7 +61,7 @@ router.post('/search',
             query = query.gte('releaseDate', req.body.releasedAfter)
         }
         try {
-            let anime = await query.sort({ createdAt: 'desc' }).exec()
+            let anime = await query.sort({ uploadDate: 'desc' }).exec()
             res.json({
                 anime: anime,
                 searchOptions: req.body
@@ -87,7 +87,7 @@ router.post('/create',
         body('genres').optional().custom(value => validateArray(value, 'string')),
         body('themes').optional().custom(value => validateArray(value, 'string')),
         body('duration').optional().trim().escape(),
-        body('rating').optional().isNumeric().toInt(),
+        body('rating').optional().toInt(),
         body('characters').optional().custom(value => validateArray(value, 'objectId')),
     ],
     async (req, res) => {
@@ -137,7 +137,7 @@ router.put('/:id',
         body('genres').optional().custom(value => validateArray(value, 'string')),
         body('themes').optional().custom(value => validateArray(value, 'string')),
         body('duration').optional().trim().escape(),
-        body('rating').optional().isNumeric().toInt(),
+        body('rating').optional().toInt(),
         body('characters').optional().custom(value => validateArray(value, 'objectId')),
     ],
     async (req, res) => {
