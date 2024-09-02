@@ -13,6 +13,7 @@ const drive = google.drive({ version: 'v3', auth })
 const folderMap = {
     'anime': process.env.GOOGLE_DRIVE_FOLDER_ANIME_ID,
     'characters': process.env.GOOGLE_DRIVE_FOLDER_CHARACTERS_ID,
+    'manga': process.env.GOOGLE_DRIVE_FOLDER_MANGA_ID,
 }
 
 async function uploadImageToGoogleDrive(file, type, id) {
