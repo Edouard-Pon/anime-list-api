@@ -33,7 +33,7 @@ router.post('/login',
             const token = jwt.sign({ role: user.role, username: user.username, id: user._id }, secretKey, {
                 expiresIn: 10080
             })
-            res.status(200).json({ success: true, token: 'JWT ' + token, user: { username: user.username, role: user.role, id: user._id, created_at: user.createdDate } })
+            res.status(200).json({ success: true, token: 'JWT ' + token, user: { username: user.username, role: user.role, _id: user._id, created_at: user.createdDate } })
         })
     }
 )
